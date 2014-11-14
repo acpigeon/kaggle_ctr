@@ -37,7 +37,7 @@ def get_data(train=True):
             else:
                 if ixx not in [0, 1]:  # only return data elements, not ids or dependent variables
                     #  bonus: change 20 to like 4 or 5 and compare hashed row to one-hotted row, hash collisions!
-                    x[ixx - 2] = abs(hash(str(ixx) + '_' + f)) % (2 ** 4)  # offset to account for removing id and class
+                    x[ixx - 2] = abs(hash(str(ixx) + '_' + f)) % (2 ** 20)  # offset to account for removing id and class
 
         yield [sample_id, x, click] if train else (sample_id, x)
 
