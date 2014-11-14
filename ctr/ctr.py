@@ -53,8 +53,7 @@ def get_len_feature_array():
 
 
 def train_test_split(cols):
-    """Write 20% of the sample to a file to retrieve later for cross validation. This lets us
-    continue to avoid keeping the main training set in memory."""
+    """Mark 20% of the samples for cross validation."""
     for ids, row, classes in get_data():
         # print row
         this_row = np.zeros(cols + 1)
