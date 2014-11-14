@@ -1,8 +1,9 @@
 __author__ = 'acpigeon'
 
-import pandas as pd
 import numpy as np
 import random
+from sklearn import linear_model
+from sklearn.metrics import classification_report
 from datetime import datetime
 
 
@@ -10,8 +11,8 @@ def get_data(train=True):
     """Read data in from the file and yield row by row"""
 
     if train:
-        path = '../data/train_rev1_short_short.csv'  # 10 rows
-        #path = '../data/train_rev1_short.csv'  # 1000 rows
+        #path = '../data/train_rev1_short_short.csv'  # 10 rows
+        path = '../data/train_rev1_short.csv'  # 1000 rows
         #path = '/Users/acpigeon/Documents/kaggle_avazu_ctr_data/originalData/train_rev1.csv'  # ~140M rows
     else:
         path = '../data/test_rev1_short.csv'
@@ -54,16 +55,16 @@ def get_len_feature_array():
 
 def train_test_split(cols):
     """Mark 20% of the samples for cross validation."""
-    for ids, row, classes in get_data():
+    for id, row, cls in get_data():
         # print row
         this_row = np.zeros(cols + 1)
         for i in row:
             this_row[i] = 1
         sorting_hat = random.choice([1, 2, 3, 4, 5])  # pick 1-5 randomly
         if sorting_hat == 5:  # every fifth element goes to xval
-            yield (0, this_row)
+            yield (0, id, this_row, cls)
         else:
-            yield (1, this_row)
+            yield (1, id, this_row, cls)
 
 
 if __name__ == '__main__':
@@ -73,12 +74,41 @@ if __name__ == '__main__':
     columns = get_len_feature_array()
     #cols = 1048575  # full train set, we can cheat on the full run and save about 18 minutes
 
+    clf = linear_model.SGDClassifier(loss='log')
 
-    for x, y in train_test_split(columns):
-        if x:
-            print "train: " + str(y)
+    # Set up params for batching
+    train_batch_size = 100
+    current_batch = 1
+    cross_val_sample_ids, cross_val_samples, cross_val_sample_classes = [], [], []
+    train_sample_ids, train_samples, train_sample_classes = [], [], []
+
+    # Iterate through samples
+    for train, sample_id, sample, sample_class in train_test_split(columns):
+        if train:
+            #print "train: {0}, {1}, {2}".format(str(sample_id), str(sample), str(sample_class))
+            if len(train_sample_ids) < train_batch_size:
+                train_sample_ids.append(sample_id)
+                train_samples.append(sample)
+                train_sample_classes.append(sample_class)
+            else:
+                clf.partial_fit(train_samples, train_sample_classes, classes=np.unique(train_sample_classes))
+
+                # Reset batch containers
+                cross_val_sample_ids, cross_val_samples, cross_val_sample_classes = [], [], []
+                train_sample_ids, train_samples, train_sample_classes = [], [], []
+
+                # Update progress
+                print "Batch {} finished...".format(current_batch)
+                current_batch += 1
         else:
-            print "xval:" + str(y)
+            cross_val_sample_ids.append(sample_id)
+            cross_val_samples.append(sample)
+            cross_val_sample_classes.append(sample_class)
+            #print "xval: {0}, {1}, {2}".format(str(sample_id), str(sample), str(sample_class))
 
-    #print get_len_feature_array()
-    print('Done, elapsed time: %s' % str(datetime.now() - start))
+    # Cross validation
+    predictions = clf.predict(cross_val_samples)
+
+    print classification_report(cross_val_sample_classes, predictions)
+
+    print "Done, elapsed time: {}".format(str(datetime.now() - start))
