@@ -1,0 +1,2 @@
+v1.py: training on single rows didn't scale well
+v2.py: tried batching up rows for training, also didn't scale well. primary culprit was converting from sparse to dense.
